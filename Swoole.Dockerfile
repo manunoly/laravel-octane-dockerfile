@@ -50,6 +50,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
   NON_ROOT_USER=octane \
   ROOT=/var/www/html
 
+ENV USE_MSSQL=true
+ENV USE_POSTGRES=
+
 WORKDIR ${ROOT}
 
 SHELL ["/bin/bash", "-eou", "pipefail", "-c"]
@@ -101,8 +104,6 @@ RUN apt-get update; \
   libzstd1 \
   libc-ares-dev \
   procps \
-  postgresql-client \
-  postgis \
   default-mysql-client \
   libbz2-dev \
   zlib1g-dev \
@@ -115,8 +116,6 @@ RUN apt-get update; \
   mbstring \
   bcmath \
   sockets \
-  pgsql \
-  pdo_pgsql \
   opcache \
   exif \
   && docker-php-ext-configure pdo_mysql && docker-php-ext-install pdo_mysql \
@@ -132,8 +131,28 @@ RUN apt-get update; \
   && pecl -q install -o -f memcached && docker-php-ext-enable memcached \
   && pecl -q install -o -f igbinary && docker-php-ext-enable igbinary \
   && pecl -q install -o -f swoole && docker-php-ext-enable swoole \
-  && docker-php-ext-configure ldap --with-libdir=lib/$(gcc -dumpmachine) && docker-php-ext-install ldap \
-  && apt-get -y autoremove \
+  && docker-php-ext-configure ldap --with-libdir=lib/$(gcc -dumpmachine) && docker-php-ext-install ldap
+
+RUN if [ "$USE_POSTGRES" == "true" ]; then \
+  apt-get install -yqq --no-install-recommends --show-progress \
+  postgresql-client \
+  postgis \
+  && docker-php-ext-install pdo_pgsql pgsql; \
+  fi
+
+RUN if [ "${USE_MSSQL}" = "true" ]; then \
+  echo "Installing Microsoft Drivers for PHP for SQL Server" \
+  && curl -sSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
+  && curl -sL https://packages.microsoft.com/config/ubuntu/22.04/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+  && apt-get update \
+  && ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools \
+  && apt-get install -y unixodbc-dev \
+  && pecl install sqlsrv pdo_sqlsrv swoole \
+  && echo "extension=sqlsrv.so" >> /usr/local/etc/php/conf.d/sqlsrv.ini \
+  && echo "extension=pdo_sqlsrv.so" >> /usr/local/etc/php/conf.d/pdo_sqlsrv.ini; \
+  fi
+
+RUN apt-get -y autoremove \
   && apt-get clean \
   && docker-php-source delete \
   && pecl clear-cache \
