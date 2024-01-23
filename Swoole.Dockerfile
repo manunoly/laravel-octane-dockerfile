@@ -147,7 +147,7 @@ RUN if [ "${USE_MSSQL}" = "true" ]; then \
   && apt-get update \
   && ACCEPT_EULA=Y apt-get install -y msodbcsql17 mssql-tools \
   && apt-get install -y unixodbc-dev \
-  && pecl install sqlsrv pdo_sqlsrv swoole \
+  && pecl install sqlsrv pdo_sqlsrv \
   && echo "extension=sqlsrv.so" >> /usr/local/etc/php/conf.d/sqlsrv.ini \
   && echo "extension=pdo_sqlsrv.so" >> /usr/local/etc/php/conf.d/pdo_sqlsrv.ini; \
   fi
